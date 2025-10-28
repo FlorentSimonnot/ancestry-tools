@@ -168,6 +168,34 @@ UPLOAD_PAGE = """
 <head>
   <meta charset="UTF-8" />
   <title>Détecteur de doublons généalogiques</title>
+  
+  <style>
+    button {
+      background: #222;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+    
+    /* effet au survol */
+    button:hover {
+      background: #444; /* plus clair */
+      transform: translateY(-1px);
+    }
+    
+    /* effet clic */
+    button:active {
+      background: #111;
+      transform: translateY(0);
+    }
+  </style>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
 </head>
 <body style="max-width:600px;margin:2rem auto;background:white;padding:2rem;border-radius:1rem;box-shadow:0 10px 30px rgba(0,0,0,0.07);">
   <h1 style="font-size:1.4rem;line-height:1.2;margin:0 0 1rem;text-align: center;">
@@ -214,6 +242,12 @@ UPLOAD_PAGE = """
       Analyser
     </button>
   </form>
+  
+    <div id="actions-btn" style="display:none;gap:1rem; margin-top: 1rem;">
+      <button id="printBtn" style="flex: 1 0 0; background:#222;color:#fff;border:0;border-radius:0.5rem;padding:0.75rem 1rem;font-size:1rem;cursor:pointer;">🖨️ Imprimer / PDF</button>
+      <button id="pdfBtn" style="flex: 1 0 0; background:#222;color:#fff;border:0;border-radius:0.5rem;padding:0.75rem 1rem;font-size:1rem;cursor:pointer;">📄 Télécharger le rapport</button>
+    </div>
+
 
   <div id="result"
     style="margin-top:2rem;background:#fafafa;border:1px solid #ddd;border-radius:0.5rem;padding:1rem;font-family:monospace;white-space:pre-wrap;font-size:0.9rem;line-height:1.4;">
@@ -221,10 +255,73 @@ UPLOAD_PAGE = """
   </div>
 
 <script>
+
 // Récup des éléments du DOM (ils existent maintenant)
 const dropzone = document.getElementById("dropzone");
 const hiddenInput = document.getElementById("gedFile");
 const fileNameLabel = document.getElementById("fileName");
+
+const actionsBtn = document.getElementById("actions-btn");
+const pdfBtn = document.getElementById('pdfBtn');
+const printBtn = document.getElementById('printBtn');
+
+// Affiche le bouton seulement après une analyse réussie
+function showActionButtons() {
+  printBtn.style.display = "inline-block";
+  pdfBtn.style.display = "inline-block";
+}
+
+printBtn.addEventListener('click', () => {
+  const printContents = document.getElementById('result').innerHTML;
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+  // Contenu HTML de la fenêtre d'impression
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Rapport généalogique</title>
+        <style>
+          body {
+            font-family: system-ui, sans-serif;
+            padding: 2rem;
+            background: #fff;
+            color: #222;
+          }
+          h2 {
+            margin-bottom: 0.5rem;
+          }
+          pre {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.4;
+          }
+        </style>
+      </head>
+      <body>
+        <h2>Analyse des doublons dans l'arbre généalogique</h2>
+        <p style="font-size: 0.9rem; color: #555;">
+          Rapport généré le ${new Date().toLocaleString('fr-FR')}
+        </p>
+        <pre>${printContents}</pre>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  // Attendre que le contenu soit bien chargé avant d'imprimer
+  printWindow.onload = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
+});
+
+
 
 const form = document.getElementById('uploadForm');
 const fileInput = document.getElementById('gedFile');
@@ -284,6 +381,88 @@ dropzone.addEventListener("drop", (e) => {
   }
 });
 
+pdfBtn.addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "a4"
+  });
+  
+function fixEncoding(str) {
+  if (!str) return "";
+  try {
+    // Convertit les chaînes UTF-8 mal décodées (cas classique avec jsPDF)
+    return decodeURIComponent(escape(str))
+      .normalize("NFC");
+  } catch (e) {
+    // Fallback si la chaîne contient déjà du UTF-16 bien formé
+    return str.normalize("NFC");
+  }
+}
+
+
+
+  // Récupère le texte affiché à l'écran
+  var fullText = fixEncoding(resultDiv.textContent || "Aucun résultat à imprimer.");
+    fullText = fullText
+    .replace(/🔸/g, "[Doublon probable]")
+    .replace(/🔹/g, "[Doublon possible]");
+
+  // Mise en page
+  const marginLeft = 40;
+  const marginTopInitial = 60;
+  const lineHeight = 16; // points entre lignes
+  const usableWidth = doc.internal.pageSize.getWidth() - marginLeft * 2;
+  const usableHeight = doc.internal.pageSize.getHeight() - marginTopInitial - 40; // 40 bottom margin
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+
+  // On découpe le gros texte en lignes qui tiennent dans la largeur
+  const wrappedLines = doc.splitTextToSize(fullText, usableWidth);
+
+  let cursorY = marginTopInitial;
+  let firstPage = true;
+
+  function addHeader() {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Doublons potentiels trouvés", marginLeft, 40);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+  }
+
+  // En-tête page 1
+  addHeader();
+
+  for (let i = 0; i < wrappedLines.length; i++) {
+    const line = wrappedLines[i];
+
+    // Si on dépasse la hauteur dispo -> nouvelle page
+    if (cursorY > marginTopInitial + usableHeight) {
+      doc.addPage();
+      cursorY = marginTopInitial;
+      addHeader(); // répéter l'en-tête sur les pages suivantes
+    }
+
+    doc.text(line, marginLeft, cursorY);
+    cursorY += lineHeight;
+  }
+
+  const now = new Date();
+const formattedDate = now.toLocaleString("fr-FR", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+}).replace(/[/:]/g, "-").replace(",", "");
+
+doc.save(`rapport_genealogique_${formattedDate}.pdf`);
+});
+
+
 // --- Soumission du formulaire / appel API ---
 
 form.addEventListener('submit', async (e) => {
@@ -332,6 +511,7 @@ form.addEventListener('submit', async (e) => {
     }
 
     resultDiv.textContent = out;
+    actionsBtn.style.display = "flex";
 
   } catch (err) {
     resultDiv.textContent = "Erreur réseau ou JavaScript : " + err;
