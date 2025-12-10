@@ -10,5 +10,5 @@ hypercorn==0.17.3
 # Gestion des fichiers uploadés (.ged)
 python-multipart==0.0.9
 
-# Outils divers si besoin (regex, JSON sont dans la stdlib)
-# Aucune lib externe nécessaire pour le parsing GEDCOM
+# Servir des fichiers statiques
+aiofiles==24.1.0

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr" style="font-family: system-ui, sans-serif; background:#f5f5f5; color:#222;">
+<head>
+  <meta charset="UTF-8" />
+  <title>Détecteur de doublons généalogiques</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 class="greeting">
+      👋 Bonjour Jean-Louis !
+    </h1>
+    <h1 class="greeting">
+      Comment allez-vous aujourd'hui ?
+    </h1>
+    <h2 class="title">
+      Analyse des doublons dans l'arbre généalogique
+    </h2>
+    <p class="description">
+      Déposez votre fichier .ged puis cliquez sur "Analyser".
+    </p>
+
+    <form id="uploadForm" class="upload-form">
+      <div id="dropzone" class="dropzone">
+        <p class="dropzone-title">
+          Déposez votre fichier .ged ici
+        </p>
+        <p class="dropzone-subtitle">
+          ou cliquez pour le sélectionner
+        </p>
+        <p id="fileName" class="file-name">
+          Aucun fichier choisi
+        </p>
+        <input type="file" id="gedFile" accept=".ged" style="display:none;" />
+      </div>
+
+      <button type="submit" class="btn">
+        Analyser
+      </button>
+    </form>
+    
+    <div id="actions-btn" class="actions-container">
+      <button id="printBtn" class="btn">🖨️ Imprimer / PDF</button>
+      <button id="pdfBtn" class="btn">📄 Télécharger le rapport</button>
+    </div>
+
+    <div id="result" class="result-container">
+      En attente d'analyse...
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
