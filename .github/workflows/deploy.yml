@@ -1,0 +1,41 @@
+  name: Deploy to VPS
+
+  on:
+    push:
+      branches:
+        - main
+
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Deploy to VPS
+          uses: appleboy/ssh-action@v1.0.3
+          with:
+            host: ${{ secrets.SSH_HOST }}
+            username: ${{ secrets.SSH_USER }}
+            key: ${{ secrets.SSH_PRIVATE_KEY }}
+            port: ${{ secrets.SSH_PORT }}
+            script: |
+              set -e  # Arrête le script en cas d'erreur
+
+              cd /root/ged-papi/ancestry-tools
+
+              # Pull les dernières modifications
+              git pull origin main
+
+              # Créer le venv s'il n'existe pas
+              if [ ! -d "venv" ]; then
+                python3 -m venv venv
+              fi
+
+              # Activer et installer les dépendances
+              source venv/bin/activate
+              pip install -q -r requirements.txt
+
+              # Redémarrer l'application via PM2
+              pm2 restart ged-papi

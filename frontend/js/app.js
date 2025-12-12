@@ -9,7 +9,24 @@ const form = document.getElementById('uploadForm');
 const fileInput = document.getElementById('gedFile');
 const resultDiv = document.getElementById('result');
 
+// Limite de taille de fichier : 100 MB (en octets)
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
 // === DRAG & DROP LOGIC ===
+
+// Fonction pour vérifier la taille du fichier
+function validateFileSize(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    fileNameLabel.textContent = `❌ Fichier trop volumineux (${sizeMB} MB). Maximum : 100 MB`;
+    fileNameLabel.style.color = "#dc2626";
+    hiddenInput.value = ""; // reset
+    resultDiv.textContent = `⚠️ Le fichier est trop volumineux (${sizeMB} MB). La taille maximale autorisée est de 100 MB.`;
+    return false;
+  }
+  fileNameLabel.style.color = "";
+  return true;
+}
 
 // 1. Clic sur la zone -> ouvre le sélecteur de fichier
 dropzone.addEventListener("click", () => {
@@ -19,7 +36,10 @@ dropzone.addEventListener("click", () => {
 // 2. Quand on choisit un fichier via le sélecteur classique
 hiddenInput.addEventListener("change", () => {
   if (hiddenInput.files && hiddenInput.files[0]) {
-    fileNameLabel.textContent = hiddenInput.files[0].name;
+    const file = hiddenInput.files[0];
+    if (validateFileSize(file)) {
+      fileNameLabel.textContent = file.name;
+    }
   } else {
     fileNameLabel.textContent = "Aucun fichier choisi";
   }
@@ -55,6 +75,10 @@ dropzone.addEventListener("drop", (e) => {
     if (!file.name.toLowerCase().endsWith(".ged")) {
       fileNameLabel.textContent = "Format non reconnu (attendu .ged)";
       hiddenInput.value = ""; // reset
+      return;
+    }
+    // Vérifier la taille avant d'accepter le fichier
+    if (!validateFileSize(file)) {
       return;
     }
     // On injecte le fichier dropé dans l'<input type="file"> caché
@@ -206,6 +230,11 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
+  // Vérification côté client avant l'upload
+  if (!validateFileSize(file)) {
+    return;
+  }
+
   resultDiv.textContent = "Analyse en cours...";
 
   const formData = new FormData();
@@ -218,7 +247,13 @@ form.addEventListener('submit', async (e) => {
     });
 
     if (!response.ok) {
-      resultDiv.textContent = "Erreur côté serveur (" + response.status + ").";
+      // Gestion spécifique de l'erreur 413 (fichier trop volumineux)
+      if (response.status === 413) {
+        const errorData = await response.json();
+        resultDiv.textContent = `⚠️ ${errorData.detail || 'Le fichier est trop volumineux. Maximum : 100 MB'}`;
+      } else {
+        resultDiv.textContent = "Erreur côté serveur (" + response.status + ").";
+      }
       return;
     }
 
