@@ -25,6 +25,10 @@
 
               cd /root/ged-papi/ancestry-tools
 
+              # Démarrer l'agent SSH et ajouter la clé
+              eval $(ssh-agent -s)
+              ssh-add ~/.ssh/id_rsa 2>/dev/null || ssh-add ~/.ssh/id_ed25519 2>/dev/null || true
+
               # Pull les dernières modifications
               git pull origin main
 
